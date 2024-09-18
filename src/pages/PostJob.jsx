@@ -1,4 +1,7 @@
 import { getCompanies } from "@/api/apiCompanies";
+import { addNewJob } from "@/api/apiJobs";
+import AddCompanyDrawer from "@/components/AddCompanyDrawer";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,10 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import useFetch from "@/hooks/useFetch";
 import { useUser } from "@clerk/clerk-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import MDEditor from "@uiw/react-md-editor";
 import { State } from "country-state-city";
 import React, { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { BarLoader } from "react-spinners";
 import { z } from "zod";
 
@@ -28,6 +32,7 @@ const schema = z.object({
 });
 const PostJob = () => {
   const { isLoaded, user } = useUser();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -43,6 +48,25 @@ const PostJob = () => {
     },
     resolver: zodResolver(schema),
   });
+
+  const {
+    loading: loadingCreateJob,
+    error: errorCreateJob,
+    data: dataCreateJob,
+    fn: fnCreateJob,
+  } = useFetch(addNewJob);
+
+  const onSubmit = (data) => {
+    fnCreateJob({
+      ...data,
+      recruiter_id: user.id,
+      isOpen: true,
+    });
+  };
+
+  useEffect(() => {
+    if (dataCreateJob?.length > 0) navigate("/jobs");
+  }, [loadingCreateJob]);
 
   const {
     fn: fnCompanies,
@@ -63,17 +87,19 @@ const PostJob = () => {
   }
 
   return (
-    <div className="gradient-title font-extrabold text-5xl sm:text-7xl text-center pb-8">
-      <h1>Post a Job</h1>
-
-      <form className="flex flex-col gap-4 p-4 pb-0">
+    <div>
+      <h1 className="gradient-title font-extrabold text-5xl sm:text-7xl text-center pb-8">
+        Post a Job
+      </h1>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col gap-4 p-4 pb-0"
+      >
         <Input placeholder="Job Title" {...register("title")} />
-        {errors?.title && (
-          <p className="text-red-500">{errors.title.message}</p>
-        )}
+        {errors.title && <p className="text-red-500">{errors.title.message}</p>}
 
-        <Textarea placeholder="Description" {...register("description")} />
-        {errors?.description && (
+        <Textarea placeholder="Job Description" {...register("description")} />
+        {errors.description && (
           <p className="text-red-500">{errors.description.message}</p>
         )}
 
@@ -82,56 +108,79 @@ const PostJob = () => {
             name="location"
             control={control}
             render={({ field }) => (
-              <Select value={field?.value} onValueChange={field.onChange}>
+              <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Filter by Location" />
+                  <SelectValue placeholder="Job Location" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {/* {console.log(City.getCitiesOfCountry("IN"))} */}
-                    {State.getStatesOfCountry("IN").map(({ name }) => {
-                      return (
-                        <SelectItem key={name} value={name}>
-                          {name}
-                        </SelectItem>
-                      );
-                    })}
+                    {State.getStatesOfCountry("IN").map(({ name }) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
             )}
           />
-
           <Controller
             name="company_id"
             control={control}
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
-                  <SelectValue placeholderm="Filter by Company">
+                  <SelectValue placeholder="Company">
                     {field.value
-                      ? companies.find((com) => com.id === Number(field.value))
-                          .name
+                      ? companies?.find((com) => com.id === Number(field.value))
+                          ?.name
                       : "Company"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {companies?.map(({ name, id }) => {
-                      return (
-                        <SelectItem key={name} value={id}>
-                          {name}
-                        </SelectItem>
-                      );
-                    })}
+                    {companies?.map(({ name, id }) => (
+                      <SelectItem key={name} value={id}>
+                        {name}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
             )}
           />
 
-          {/* Add company Drawer */}
+          <AddCompanyDrawer fetchCompanies={fnCompanies} />
         </div>
+        {errors.location && (
+          <p className="text-red-500">{errors.location.message}</p>
+        )}
+        {errors.company_id && (
+          <p className="text-red-500">{errors.company_id.message}</p>
+        )}
+
+        <Controller
+          name="requirements"
+          control={control}
+          render={({ field }) => (
+            <div data-color-mode="dark">
+              <MDEditor value={field.value} onChange={field.onChange} />
+            </div>
+          )}
+        />
+        {errors.requirements && (
+          <p className="text-red-500">{errors.requirements.message}</p>
+        )}
+        {errors.errorCreateJob && (
+          <p className="text-red-500">{errors?.errorCreateJob?.message}</p>
+        )}
+        {errorCreateJob?.message && (
+          <p className="text-red-500">{errorCreateJob?.message}</p>
+        )}
+        {loadingCreateJob && <BarLoader width={"100%"} color="#36d7b7" />}
+        <Button type="submit" variant="blue" size="lg" className="mt-2">
+          Submit
+        </Button>
       </form>
     </div>
   );

@@ -48,3 +48,18 @@ export async function updateApplications(token, { job_id }, status) {
   }
   return data;
 }
+
+export async function getApplications(token, { user_id }) {
+  const supabase = await supaBaseClient(token);
+
+  const { data, error } = await supabase
+    .from("applications")
+    .select("*,job:jobs(title,company:companies(name))")
+    .eq("candidate_id", user_id);
+
+  if (error) {
+    console.log("Error in Fetching applications data", error);
+    return null;
+  }
+  return data;
+}
