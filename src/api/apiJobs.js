@@ -56,3 +56,50 @@ export async function saveJobs(token, { alreadySaved }, savedData) {
     return data;
   }
 }
+
+export async function getSingleJob(token, { job_id }) {
+  const supabase = await supaBaseClient(token);
+
+  const { data, error: getError } = await supabase
+    .from("jobs")
+    .select("*,company:companies(name,logo_url),applications:applications(*)")
+    .eq("id", job_id)
+    .single();
+
+  if (getError) {
+    console.log("Error in Fetching job data", getError);
+    return null;
+  }
+  return data;
+}
+
+export async function updateHiringStatus(token, { job_id }, isOpen) {
+  const supabase = await supaBaseClient(token);
+
+  const { data, error: getError } = await supabase
+    .from("jobs")
+    .update({ isOpen })
+    .eq("id", job_id)
+    .select();
+
+  if (getError) {
+    console.log("Error in Updating job data", getError);
+    return null;
+  }
+  return data;
+}
+
+export async function addNewJob(token, _, jobData) {
+  const supabase = await supaBaseClient(token);
+
+  const { data, error: addError } = await supabase
+    .from("jobs")
+    .insert([jobData])
+    .select();
+
+  if (addError) {
+    console.log("Error in Inserting job data", addError);
+    return null;
+  }
+  return data;
+}
